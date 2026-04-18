@@ -78,12 +78,12 @@ public class SettingsScreen extends Screen {
         }
         if (feature.has(FeatureType.Caps.COUNT)) {
             sliders.add(new Slider(sx, sy + (i++) * rowH, sw, 17, "Count", 1F, 30F,
-                    () -> (float) fs.count, v -> fs.count = (int) v));
+                    () -> (float) fs.count, v -> fs.count = Math.round(v)));
         }
         if (feature.has(FeatureType.Caps.STYLE)) {
             int maxStyle = getStyleMax();
             sliders.add(new Slider(sx, sy + (i++) * rowH, sw, 17, "Style", 0F, maxStyle - 1,
-                    () -> (float) fs.style, v -> fs.style = (int) v) {
+                    () -> (float) fs.style, v -> fs.style = Math.round(v)) {
                 @Override
                 public String formatValue() {
                     String[] labels = getStyleLabels();

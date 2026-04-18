@@ -6,7 +6,7 @@ import com.example.cosmetics.gui.GuiDraw;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.AbstractClientPlayerEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.client.gui.AbstractGui;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -114,8 +114,8 @@ public final class TargetHud {
 
     private static void drawHead(MatrixStack ms, LivingEntity ent, int x, int y, int size, float alpha) {
         ResourceLocation tex = FALLBACK_SKIN;
-        if (ent instanceof AbstractClientPlayerEntity) {
-            tex = ((AbstractClientPlayerEntity) ent).getSkinTextureLocation();
+        if (ent instanceof PlayerEntity) {
+            tex = ((PlayerEntity) ent).getSkinTextureLocation();
         }
         Minecraft.getInstance().getTextureManager().bind(tex);
         RenderSystem.enableBlend();
