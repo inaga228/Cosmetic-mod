@@ -10,7 +10,10 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.potion.Effects;
 import net.minecraft.util.Hand;
+import net.minecraft.client.multiplayer.PlayerController;
 import net.minecraft.util.NonNullList;
+import net.minecraft.util.math.BlockRayTraceResult;
+import net.minecraft.util.math.RayTraceResult;
 
 /**
  * Handles all non-visual utility features:
@@ -25,6 +28,9 @@ public final class UtilityHandler {
 
     private static final UtilityHandler INSTANCE = new UtilityHandler();
     public static UtilityHandler get() { return INSTANCE; }
+
+    // Fast Place
+    private int placeTimer = 0;
 
     // Fullbright: remember original gamma so we can restore it on disable.
     private float originalGamma = -1F;
@@ -167,22 +173,48 @@ public final class UtilityHandler {
     private void tickFastPlace(Minecraft mc, ClientPlayerEntity player, CosmeticsState state) {
         if (!state.isOn(FeatureType.FAST_PLACE)) return;
 
-        // RMB must be held down.
-        if (!mc.options.keyUse.isDown()) return;
+        if (!mc.options.keyUse.isDown()) {
+            placeTimer = 0;
+            return;
+        }
 
-        // Player must be holding a block item (main or off hand).
+        // Must be looking at a block.
+        if (mc.hitResult == null || mc.hitResult.getType() != RayTraceResult.Type.BLOCK) {
+            placeTimer = 0;
+            return;
+        }
+
         ItemStack mainHand = player.getItemInHand(Hand.MAIN_HAND);
         ItemStack offHand  = player.getItemInHand(Hand.OFF_HAND);
-        boolean hasBlock = (mainHand.getItem() instanceof BlockItem)
-                        || (offHand.getItem()  instanceof BlockItem);
-        if (!hasBlock) return;
+        boolean mainIsBlock = mainHand.getItem() instanceof BlockItem;
+        boolean offIsBlock  = offHand.getItem()  instanceof BlockItem;
+        if (!mainIsBlock && !offIsBlock) {
+            placeTimer = 0;
+            return;
+        }
 
-        // Zero rightClickDelay so vanilla places blocks every tick instead of
-        // waiting 4 ticks between placements. With official mappings this field
-        // is correctly remapped by reobfJar at build time.
-        int repeats = Math.max(1, state.settings(FeatureType.FAST_PLACE).count);
-        for (int i = 0; i < repeats; i++) {
+        if (placeTimer > 0) {
+            placeTimer--;
+            return;
+        }
+
+        PlayerController pc = mc.gameMode;
+        if (pc == null) return;
+
+        int callsPerTick = Math.max(1, state.settings(FeatureType.FAST_PLACE).count);
+
+        for (int c = 0; c < callsPerTick; c++) {
             mc.rightClickDelay = 0;
+
+            if (mc.hitResult == null || mc.hitResult.getType() != RayTraceResult.Type.BLOCK) break;
+            BlockRayTraceResult blockHit = (BlockRayTraceResult) mc.hitResult;
+
+            Hand useHand = mainIsBlock ? Hand.MAIN_HAND : Hand.OFF_HAND;
+            pc.useItemOn(player, mc.level, useHand, blockHit);
+
+            // Re-cast ray so next call targets the new neighbour face.
+            mc.hitResult = player.pick(5.0, 0F, false);
+            if (mc.hitResult == null || mc.hitResult.getType() != RayTraceResult.Type.BLOCK) break;
         }
     }
 }
