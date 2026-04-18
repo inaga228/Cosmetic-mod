@@ -17,11 +17,19 @@ public class ModRenderTypes {
             DefaultVertexFormats.POSITION_COLOR,
             GL11.GL_QUADS, 256, false, true,
             RenderType.State.builder()
-                    .setTransparencyState(RenderType.TRANSLUCENT_TRANSPARENCY)
+                    .setTransparencyState(new RenderState.TransparencyState("translucent_transparency", () -> {
+                        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+                        com.mojang.blaze3d.systems.RenderSystem.blendFuncSeparate(
+                            GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA,
+                            GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                    }, () -> {
+                        com.mojang.blaze3d.systems.RenderSystem.disableBlend();
+                        com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
+                    }))
                     .setShadeModelState(new RenderState.ShadeModelState(true))
-                    .setCullState(RenderType.NO_CULL)
-                    .setLightmapState(RenderType.NO_LIGHTMAP)
-                    .setWriteMaskState(RenderType.COLOR_WRITE)
+                    .setCullState(new RenderState.CullState(false))
+                    .setLightmapState(new RenderState.LightmapState(false))
+                    .setWriteMaskState(new RenderState.WriteMaskState(true, false))
                     .createCompositeState(false)
     );
 
