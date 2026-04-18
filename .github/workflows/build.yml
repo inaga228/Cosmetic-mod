@@ -35,16 +35,14 @@ jobs:
         with:
           gradle-version: 7.5.1
 
-      - name: Make gradlew executable (if present)
-        run: chmod +x ./gradlew || true
+      - name: Generate Gradle wrapper
+        run: gradle wrapper --gradle-version 7.5.1
 
-      - name: Build (prefer wrapper, fall back to system gradle)
-        run: |
-          if [ -x ./gradlew ] && [ -f gradle/wrapper/gradle-wrapper.jar ]; then
-            ./gradlew build --no-daemon --stacktrace
-          else
-            gradle build --no-daemon --stacktrace
-          fi
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build
+        run: ./gradlew build --no-daemon --stacktrace 2>&1
 
       - name: Upload jar
         if: success()
