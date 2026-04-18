@@ -1,6 +1,5 @@
 package com.example.cosmetics.render;
 
-import net.minecraft.client.renderer.RenderState;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import org.lwjgl.opengl.GL11;
@@ -25,7 +24,6 @@ public final class ModRenderTypes extends RenderType {
             GL11.GL_QUADS, 256, false, true,
             RenderType.State.builder()
                     .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
-                    .setShadeModelState(new RenderState.ShadeModelState(true))
                     .setCullState(NO_CULL)
                     .setLightmapState(NO_LIGHTMAP)
                     .setWriteMaskState(COLOR_WRITE)

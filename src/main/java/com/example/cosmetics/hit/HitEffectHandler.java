@@ -11,9 +11,7 @@ import com.example.cosmetics.particles.shapes.SlashParticle;
 import com.example.cosmetics.particles.shapes.StarParticle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -40,15 +38,6 @@ public final class HitEffectHandler {
         if (Minecraft.getInstance().level == null) return;
         if (event.getPlayer() != Minecraft.getInstance().player) return;
         burst(event.getTarget());
-    }
-
-    @SubscribeEvent
-    public static void onHurt(LivingHurtEvent event) {
-        LivingEntity ent = event.getEntityLiving();
-        if (ent == null || ent.level == null || !ent.level.isClientSide) return;
-        if (event.getSource() != null
-                && event.getSource().getEntity() == Minecraft.getInstance().player) return;
-        burst(ent);
     }
 
     private static void burst(Entity target) {

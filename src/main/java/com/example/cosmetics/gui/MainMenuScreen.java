@@ -197,7 +197,7 @@ public class MainMenuScreen extends Screen {
                 fill(ms, x, y, x + 3, y + h, withAlpha(0xFF9B6DFF, alpha));
                 fill(ms, x + 3, y, x + 4, y + h, withAlpha(0x409B6DFF, alpha));
             } else if (hoverAnim > 0.05F) {
-                fill(ms, x, y, x + 2, y + h, withAlpha(0xFF604090, (int)(alpha * hoverAnim)));
+                fill(ms, x, y, x + 2, y + h, withAlpha(0xFF604090, alpha * hoverAnim));
             }
 
             String label = category.name().charAt(0) + category.name().substring(1).toLowerCase();
