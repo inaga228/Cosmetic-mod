@@ -1,36 +1,53 @@
 package com.example.cosmetics.client;
 
+import com.example.cosmetics.feature.FeatureSettings;
+import com.example.cosmetics.feature.FeatureType;
+
+import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
- * Singleton state for which cosmetic effects are currently active.
- * Client-only; no persistence (could be added later via a config file).
+ * Client-only singleton: which features are enabled and their per-feature
+ * settings. No persistence.
  */
 public final class CosmeticsState {
-    public enum Trail { RAINBOW, FLAME, GALAXY }
-    public enum Aura  { AURA, SNOW, HEARTS }
-    public enum Hat   { CHINA }
-
     private static final CosmeticsState INSTANCE = new CosmeticsState();
     public static CosmeticsState get() { return INSTANCE; }
 
-    private final Set<Trail> trails = EnumSet.noneOf(Trail.class);
-    private final Set<Aura>  auras  = EnumSet.noneOf(Aura.class);
-    private final Set<Hat>   hats   = EnumSet.noneOf(Hat.class);
-    private boolean hudEnabled = true;
+    private final Set<FeatureType> enabled = EnumSet.noneOf(FeatureType.class);
+    private final Map<FeatureType, FeatureSettings> settings = new EnumMap<>(FeatureType.class);
 
-    public boolean isTrailOn(Trail t) { return trails.contains(t); }
-    public boolean isAuraOn (Aura  a) { return auras.contains(a); }
-    public boolean isHatOn  (Hat   h) { return hats.contains(h); }
-    public boolean isHudEnabled()      { return hudEnabled; }
+    private CosmeticsState() {
+        // Sensible defaults for the features that need non-default values.
+        for (FeatureType f : FeatureType.values()) {
+            FeatureSettings s = new FeatureSettings();
+            applyDefaults(f, s);
+            settings.put(f, s);
+        }
+        // Turn the HUD on by default so users see something immediately.
+        enabled.add(FeatureType.COSMETICS_HUD);
+        enabled.add(FeatureType.TARGET_HUD);
+    }
 
-    public void toggleTrail(Trail t) { if (!trails.remove(t)) trails.add(t); }
-    public void toggleAura (Aura  a) { if (!auras.remove(a))  auras.add(a);  }
-    public void toggleHat  (Hat   h) { if (!hats.remove(h))   hats.add(h);   }
-    public void toggleHud  ()        { hudEnabled = !hudEnabled; }
+    private static void applyDefaults(FeatureType f, FeatureSettings s) {
+        switch (f) {
+            case RAINBOW_TRAIL: s.size = 0.35F; s.density = 1.5F; break;
+            case FLAME_TRAIL:   s.colorR = 1.0F; s.colorG = 0.55F; s.colorB = 0.1F; s.size = 0.4F; break;
+            case GALAXY_TRAIL:  s.colorR = 0.7F; s.colorG = 0.5F; s.colorB = 1.0F; s.size = 0.25F; break;
+            case AURA:          s.colorR = 0.55F; s.colorG = 0.35F; s.colorB = 1.0F; break;
+            case SNOW_AURA:     s.colorR = 0.9F; s.colorG = 0.95F; s.colorB = 1.0F; break;
+            case HEART_AURA:    s.colorR = 1.0F; s.colorG = 0.25F; s.colorB = 0.4F; break;
+            case CHINA_HAT:     s.colorR = 0.85F; s.colorG = 0.2F; s.colorB = 0.25F;
+                                s.offsetY = 0.0F; s.size = 1.0F; break;
+            case HIT_EFFECT:    s.colorR = 1.0F; s.colorG = 0.2F; s.colorB = 0.2F; s.count = 8; break;
+            default: break;
+        }
+    }
 
-    public Set<Trail> activeTrails() { return trails; }
-    public Set<Aura>  activeAuras()  { return auras; }
-    public Set<Hat>   activeHats()   { return hats; }
+    public boolean isOn(FeatureType f) { return enabled.contains(f); }
+    public void toggle(FeatureType f) { if (!enabled.remove(f)) enabled.add(f); }
+    public FeatureSettings settings(FeatureType f) { return settings.get(f); }
+    public Set<FeatureType> active() { return enabled; }
 }

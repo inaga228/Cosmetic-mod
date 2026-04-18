@@ -2,54 +2,39 @@ package com.example.cosmetics.client;
 
 import com.example.cosmetics.CosmeticsMod;
 import com.example.cosmetics.auras.AuraTicker;
+import com.example.cosmetics.feature.FeatureType;
 import com.example.cosmetics.gui.MainMenuScreen;
 import com.example.cosmetics.hud.CosmeticsHud;
-import com.example.cosmetics.particles.ModParticles;
-import com.example.cosmetics.particles.factories.GenericSpriteParticleFactory;
-import com.example.cosmetics.render.HatLayer;
+import com.example.cosmetics.hud.TargetHud;
+import com.example.cosmetics.particles.ParticleManager;
+import com.example.cosmetics.render.HandRenderer;
+import com.example.cosmetics.render.HatRenderer;
 import com.example.cosmetics.trails.TrailTicker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.entity.EntityRendererManager;
-import net.minecraft.client.renderer.entity.PlayerRenderer;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.Hand;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ParticleFactoryRegisterEvent;
+import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.client.event.RenderHandEvent;
+import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
-import java.util.Map;
-
 @Mod.EventBusSubscriber(modid = CosmeticsMod.MOD_ID, value = Dist.CLIENT)
 public final class ClientEvents {
 
-    // ---- Mod event bus listeners (wired from CosmeticsMod constructor) ----
+    // ---- Mod event bus --------------------------------------------------
 
     public static void onClientSetup(FMLClientSetupEvent event) {
         KeyBindings.register();
-
-        // Install HatLayer on both player renderers. Must run on the client
-        // thread because it touches Minecraft's render manager.
-        event.enqueueWork(() -> {
-            EntityRendererManager mgr = Minecraft.getInstance().getEntityRenderDispatcher();
-            Map<String, PlayerRenderer> skins = mgr.getSkinMap();
-            for (PlayerRenderer r : skins.values()) {
-                r.addLayer(new HatLayer(r));
-            }
-        });
     }
 
-    public static void onParticleFactoryRegister(ParticleFactoryRegisterEvent event) {
-        Minecraft.getInstance().particleEngine.register(ModParticles.RAINBOW.get(), GenericSpriteParticleFactory::new);
-        Minecraft.getInstance().particleEngine.register(ModParticles.FLAME.get(),   GenericSpriteParticleFactory::new);
-        Minecraft.getInstance().particleEngine.register(ModParticles.GALAXY.get(),  GenericSpriteParticleFactory::new);
-        Minecraft.getInstance().particleEngine.register(ModParticles.AURA.get(),    GenericSpriteParticleFactory::new);
-        Minecraft.getInstance().particleEngine.register(ModParticles.SNOW.get(),    GenericSpriteParticleFactory::new);
-        Minecraft.getInstance().particleEngine.register(ModParticles.HEART.get(),   GenericSpriteParticleFactory::new);
-    }
-
-    // ---- Forge event bus listeners (auto-registered via @EventBusSubscriber) ----
+    // ---- Forge event bus ------------------------------------------------
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -57,21 +42,55 @@ public final class ClientEvents {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
 
-        // Open menu on Right Shift
         while (KeyBindings.OPEN_MENU.consumeClick()) {
-            if (mc.screen == null) {
-                mc.setScreen(new MainMenuScreen());
-            }
+            if (mc.screen == null) mc.setScreen(new MainMenuScreen());
         }
 
-        // Drive particle tickers
+        ParticleManager.get().tick();
         TrailTicker.tick(mc.player);
         AuraTicker.tick(mc.player);
+        HandRenderer.tickPlaceAnim();
     }
 
     @SubscribeEvent
     public static void onRenderOverlay(RenderGameOverlayEvent.Post event) {
         if (event.getType() != RenderGameOverlayEvent.ElementType.ALL) return;
         CosmeticsHud.render(event.getMatrixStack(), event.getPartialTicks());
+        TargetHud.render(event.getMatrixStack(), event.getPartialTicks());
     }
+
+    @SubscribeEvent
+    public static void onRenderWorldLast(RenderWorldLastEvent event) {
+        ParticleManager.get().renderAll(event.getMatrixStack(), event.getPartialTicks());
+        HatRenderer.render(event.getMatrixStack(), event.getPartialTicks());
+    }
+
+    @SubscribeEvent
+    public static void onRenderHand(RenderHandEvent event) {
+        HandRenderer.applyTransforms(event.getMatrixStack(), event.getPartialTicks());
+    }
+
+    @SubscribeEvent
+    public static void onLivingHurt(LivingHurtEvent event) {
+        if (event.getEntityLiving() != null && event.getEntityLiving().level != null
+                && event.getEntityLiving().level.isClientSide) {
+            TargetHud.onLivingHurt(event.getEntityLiving());
+        }
+    }
+
+    @SubscribeEvent
+    public static void onClickInput(InputEvent.ClickInputEvent event) {
+        // Detect right-click with a block item to trigger the custom place animation.
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+        if (!event.isUseItem()) return;
+        ItemStack stack = mc.player.getItemInHand(Hand.MAIN_HAND);
+        if (stack.getItem() instanceof BlockItem) {
+            if (CosmeticsState.get().isOn(FeatureType.CUSTOM_PLACE)) {
+                HandRenderer.triggerPlaceAnim();
+            }
+        }
+    }
+
+    private ClientEvents() {}
 }

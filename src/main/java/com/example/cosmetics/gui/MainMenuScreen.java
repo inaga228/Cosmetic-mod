@@ -1,141 +1,98 @@
 package com.example.cosmetics.gui;
 
 import com.example.cosmetics.client.CosmeticsState;
+import com.example.cosmetics.feature.FeatureType;
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Main cosmetics menu. Dark gradient background, soft edge-glow, rounded-ish
- * corners (approximated with two inset rectangles), smooth open/close animation
- * driven by partialTicks.
+ * Main cosmetics menu: left side shows categories, right side shows feature
+ * cards. Left-click toggles a feature, right-click opens its {@link SettingsScreen}.
  */
 public class MainMenuScreen extends Screen {
 
-    private enum Category { TRAILS, PARTICLES, HAT, HUD }
-
-    private Category current = Category.TRAILS;
-    private long openedAtMs = 0L;
+    private FeatureType.Category current = FeatureType.Category.TRAILS;
+    private long openedAtMs;
     private boolean closing = false;
-    private long closingAtMs = 0L;
+    private long closingAtMs;
     private static final long ANIM_MS = 220L;
 
-    private final List<CatButton>    categoryButtons = new ArrayList<>();
-    private final List<ToggleButton> toggleButtons   = new ArrayList<>();
+    private final List<CategoryTab> categoryTabs = new ArrayList<>();
+    private final List<FeatureCard> cards = new ArrayList<>();
 
-    public MainMenuScreen() {
-        super(new StringTextComponent("Cosmetics"));
-    }
+    public MainMenuScreen() { super(new StringTextComponent("Cosmetics")); }
+
+    @Override public boolean isPauseScreen() { return false; }
 
     @Override
     protected void init() {
-        this.openedAtMs = System.currentTimeMillis();
-        this.closing = false;
+        openedAtMs = System.currentTimeMillis();
+        closing = false;
+        categoryTabs.clear();
 
-        categoryButtons.clear();
-        toggleButtons.clear();
-
-        int panelW = 320;
-        int panelH = 200;
-        int px = (this.width  - panelW) / 2;
+        int panelW = 360;
+        int panelH = 220;
+        int px = (this.width - panelW) / 2;
         int py = (this.height - panelH) / 2;
 
-        // Category tabs along the left side
         int i = 0;
-        for (Category c : Category.values()) {
-            categoryButtons.add(new CatButton(px + 10, py + 40 + i * 28, 90, 24, c));
+        for (FeatureType.Category c : FeatureType.Category.values()) {
+            categoryTabs.add(new CategoryTab(px + 10, py + 40 + i * 24, 90, 20, c));
             i++;
         }
-
-        rebuildToggles(px, py);
+        rebuildCards(px, py);
     }
 
-    private void rebuildToggles(int px, int py) {
-        toggleButtons.clear();
-        int rx = px + 115;
-        int ry = py + 40;
-        int rowH = 28;
-
-        CosmeticsState s = CosmeticsState.get();
-        switch (current) {
-            case TRAILS:
-                toggleButtons.add(new ToggleButton(rx, ry + 0 * rowH, 190, 24,
-                        "Rainbow Trail", () -> s.isTrailOn(CosmeticsState.Trail.RAINBOW),
-                        () -> s.toggleTrail(CosmeticsState.Trail.RAINBOW)));
-                toggleButtons.add(new ToggleButton(rx, ry + 1 * rowH, 190, 24,
-                        "Flame Trail", () -> s.isTrailOn(CosmeticsState.Trail.FLAME),
-                        () -> s.toggleTrail(CosmeticsState.Trail.FLAME)));
-                toggleButtons.add(new ToggleButton(rx, ry + 2 * rowH, 190, 24,
-                        "Galaxy Trail", () -> s.isTrailOn(CosmeticsState.Trail.GALAXY),
-                        () -> s.toggleTrail(CosmeticsState.Trail.GALAXY)));
-                break;
-            case PARTICLES:
-                toggleButtons.add(new ToggleButton(rx, ry + 0 * rowH, 190, 24,
-                        "Aura", () -> s.isAuraOn(CosmeticsState.Aura.AURA),
-                        () -> s.toggleAura(CosmeticsState.Aura.AURA)));
-                toggleButtons.add(new ToggleButton(rx, ry + 1 * rowH, 190, 24,
-                        "Snow Aura", () -> s.isAuraOn(CosmeticsState.Aura.SNOW),
-                        () -> s.toggleAura(CosmeticsState.Aura.SNOW)));
-                toggleButtons.add(new ToggleButton(rx, ry + 2 * rowH, 190, 24,
-                        "Hearts", () -> s.isAuraOn(CosmeticsState.Aura.HEARTS),
-                        () -> s.toggleAura(CosmeticsState.Aura.HEARTS)));
-                break;
-            case HAT:
-                toggleButtons.add(new ToggleButton(rx, ry + 0 * rowH, 190, 24,
-                        "China Hat", () -> s.isHatOn(CosmeticsState.Hat.CHINA),
-                        () -> s.toggleHat(CosmeticsState.Hat.CHINA)));
-                break;
-            case HUD:
-                toggleButtons.add(new ToggleButton(rx, ry + 0 * rowH, 190, 24,
-                        "HUD Panel", s::isHudEnabled, s::toggleHud));
-                break;
+    private void rebuildCards(int px, int py) {
+        cards.clear();
+        int cx = px + 110;
+        int cy = py + 40;
+        int cw = 230;
+        int ch = 22;
+        int i = 0;
+        for (FeatureType f : FeatureType.values()) {
+            if (f.category != current) continue;
+            cards.add(new FeatureCard(cx, cy + i * (ch + 4), cw, ch, f));
+            i++;
         }
     }
-
-    @Override
-    public boolean isPauseScreen() { return false; }
 
     @Override
     public void render(MatrixStack ms, int mouseX, int mouseY, float partialTicks) {
         float anim = animProgress();
-        float alpha = anim; // 0..1
+        fill(ms, 0, 0, this.width, this.height, (int)(anim * 140) << 24);
 
-        // Dim background slightly.
-        fill(ms, 0, 0, this.width, this.height, (int)(alpha * 140) << 24);
-
-        int panelW = 320;
-        int panelH = 200;
-        int px = (this.width  - panelW) / 2;
+        int panelW = 360;
+        int panelH = 220;
+        int px = (this.width - panelW) / 2;
         int py = (this.height - panelH) / 2;
 
-        // Scale animation around center
         ms.pushPose();
         float scale = 0.9F + 0.1F * anim;
         ms.translate(this.width / 2f, this.height / 2f, 0);
         ms.scale(scale, scale, 1.0F);
         ms.translate(-this.width / 2f, -this.height / 2f, 0);
 
-        GuiDraw.roundedPanel(ms, px, py, panelW, panelH, alpha);
+        GuiDraw.roundedPanel(ms, px, py, panelW, panelH, anim);
 
-        // Title
-        int titleColor = withAlpha(0xFFFFFFFF, alpha);
-        drawCenteredString(ms, this.font, "Cosmetics", px + panelW / 2, py + 14, titleColor);
-        // Accent underline
-        fill(ms, px + panelW / 2 - 40, py + 28, px + panelW / 2 + 40, py + 30,
-                withAlpha(0xFF8A5CFF, alpha));
+        int titleCol = ((int)(Math.max(0, Math.min(255, anim * 255))) << 24) | 0xFFFFFF;
+        drawCenteredString(ms, this.font, "Cosmetics", px + panelW / 2, py + 14, titleCol);
+        fill(ms, px + panelW / 2 - 50, py + 28, px + panelW / 2 + 50, py + 30,
+                ((int)(anim * 255) << 24) | 0x8A5CFF);
 
-        for (CatButton c : categoryButtons) c.draw(ms, mouseX, mouseY, alpha, current);
-        for (ToggleButton t : toggleButtons) t.draw(ms, mouseX, mouseY, alpha);
+        for (CategoryTab c : categoryTabs) c.draw(ms, mouseX, mouseY, anim, current);
+        for (FeatureCard c : cards) c.draw(ms, mouseX, mouseY, anim);
 
-        // Footer hint
-        drawString(ms, this.font, "Right Shift / Esc to close",
-                px + 10, py + panelH - 16, withAlpha(0xFFAAAAAA, alpha));
+        drawString(ms, this.font, "LMB toggle | RMB settings | Esc close",
+                px + 10, py + panelH - 14,
+                ((int)(anim * 255) << 24) | 0xAAAAAA);
 
         ms.popPose();
 
@@ -145,123 +102,108 @@ public class MainMenuScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double mx, double my, int button) {
         if (closing) return false;
-        for (CatButton c : categoryButtons) {
-            if (c.contains(mouseX, mouseY)) {
+        for (CategoryTab c : categoryTabs) {
+            if (c.contains(mx, my)) {
                 current = c.category;
-                int panelW = 320, panelH = 200;
-                int px = (this.width  - panelW) / 2;
+                int panelW = 360, panelH = 220;
+                int px = (this.width - panelW) / 2;
                 int py = (this.height - panelH) / 2;
-                rebuildToggles(px, py);
+                rebuildCards(px, py);
                 return true;
             }
         }
-        for (ToggleButton t : toggleButtons) {
-            if (t.contains(mouseX, mouseY)) {
-                t.onClick.run();
+        for (FeatureCard c : cards) {
+            if (c.contains(mx, my)) {
+                if (button == 0) {
+                    CosmeticsState.get().toggle(c.feature);
+                } else if (button == 1) {
+                    Minecraft.getInstance().setScreen(new SettingsScreen(c.feature));
+                }
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(mx, my, button);
     }
 
     @Override
     public boolean keyPressed(int key, int scan, int mods) {
-        // 256 = GLFW_KEY_ESCAPE, 344 = GLFW_KEY_RIGHT_SHIFT
-        if (key == 256 || key == 344) {
-            beginClose();
-            return true;
+        if (key == 256 || key == 344) { // ESC or Right Shift
+            closing = true; closingAtMs = System.currentTimeMillis(); return true;
         }
         return super.keyPressed(key, scan, mods);
     }
 
-    @Override
-    public void onClose() {
-        if (!closing) {
-            beginClose();
-        } else {
-            super.onClose();
-        }
-    }
-
-    private void beginClose() {
-        closing = true;
-        closingAtMs = System.currentTimeMillis();
+    @Override public void onClose() {
+        if (!closing) { closing = true; closingAtMs = System.currentTimeMillis(); }
+        else super.onClose();
     }
 
     private float animProgress() {
         long now = System.currentTimeMillis();
         if (!closing) {
-            float t = Math.min(1.0F, (now - openedAtMs) / (float) ANIM_MS);
-            return easeOut(t);
+            float t = Math.min(1F, (now - openedAtMs) / (float) ANIM_MS);
+            return 1F - (1F - t) * (1F - t);
         } else {
-            float t = Math.min(1.0F, (now - closingAtMs) / (float) ANIM_MS);
-            return 1.0F - easeOut(t);
+            float t = Math.min(1F, (now - closingAtMs) / (float) ANIM_MS);
+            return 1F - (1F - (1F - (1F - t) * (1F - t)));
         }
     }
 
-    private static float easeOut(float t) {
-        return 1.0F - (1.0F - t) * (1.0F - t);
-    }
+    // ---- Widgets ------------------------------------------------------------
 
-    private static int withAlpha(int argb, float alpha) {
-        int a = Math.max(0, Math.min(255, (int) ((argb >>> 24 & 0xFF) * alpha)));
-        return (a << 24) | (argb & 0x00FFFFFF);
-    }
-
-    // ---- Inner button types -------------------------------------------------
-
-    private class CatButton {
+    private class CategoryTab {
         final int x, y, w, h;
-        final Category category;
-        CatButton(int x, int y, int w, int h, Category c) {
+        final FeatureType.Category category;
+        CategoryTab(int x, int y, int w, int h, FeatureType.Category c) {
             this.x = x; this.y = y; this.w = w; this.h = h; this.category = c;
         }
         boolean contains(double mx, double my) {
             return mx >= x && mx <= x + w && my >= y && my <= y + h;
         }
-        void draw(MatrixStack ms, int mx, int my, float alpha, Category selected) {
+        void draw(MatrixStack ms, int mx, int my, float alpha, FeatureType.Category selected) {
             boolean hover = contains(mx, my);
             boolean sel = selected == category;
             int base = sel ? 0xFF3A2D5E : (hover ? 0xFF2B2540 : 0xFF1E1B2E);
             fill(ms, x, y, x + w, y + h, withAlpha(base, alpha));
             if (sel) fill(ms, x, y, x + 3, y + h, withAlpha(0xFF8A5CFF, alpha));
             String label = category.name().charAt(0) + category.name().substring(1).toLowerCase();
-            drawString(ms, font, label, x + 10, y + (h - 8) / 2,
-                    withAlpha(0xFFFFFFFF, alpha));
+            drawString(ms, font, label, x + 8, y + (h - 8) / 2, withAlpha(0xFFFFFFFF, alpha));
         }
     }
 
-    private class ToggleButton {
+    private class FeatureCard {
         final int x, y, w, h;
-        final String label;
-        final java.util.function.BooleanSupplier isOn;
-        final Runnable onClick;
-        ToggleButton(int x, int y, int w, int h, String label,
-                     java.util.function.BooleanSupplier isOn, Runnable onClick) {
-            this.x = x; this.y = y; this.w = w; this.h = h;
-            this.label = label; this.isOn = isOn; this.onClick = onClick;
+        final FeatureType feature;
+        FeatureCard(int x, int y, int w, int h, FeatureType f) {
+            this.x = x; this.y = y; this.w = w; this.h = h; this.feature = f;
         }
         boolean contains(double mx, double my) {
             return mx >= x && mx <= x + w && my >= y && my <= y + h;
         }
         void draw(MatrixStack ms, int mx, int my, float alpha) {
             boolean hover = contains(mx, my);
+            boolean on = CosmeticsState.get().isOn(feature);
             int base = hover ? 0xFF2B2540 : 0xFF1E1B2E;
             fill(ms, x, y, x + w, y + h, withAlpha(base, alpha));
+            if (on) fill(ms, x, y, x + 3, y + h, withAlpha(0xFF7A4CFF, alpha));
 
-            // Toggle pill on the right
-            int pillW = 30, pillH = 14;
-            int px = x + w - pillW - 8;
-            int py = y + (h - pillH) / 2;
-            int pillBg = isOn.getAsBoolean() ? 0xFF7A4CFF : 0xFF444050;
-            fill(ms, px, py, px + pillW, py + pillH, withAlpha(pillBg, alpha));
-            int knobX = isOn.getAsBoolean() ? px + pillW - pillH : px;
-            fill(ms, knobX, py, knobX + pillH, py + pillH, withAlpha(0xFFFFFFFF, alpha));
-
-            drawString(ms, font, label, x + 10, y + (h - 8) / 2,
+            drawString(ms, font, feature.displayName, x + 10, y + (h - 8) / 2,
                     withAlpha(0xFFFFFFFF, alpha));
+
+            int pillW = 24, pillH = 10;
+            int pX = x + w - pillW - 8;
+            int pY = y + (h - pillH) / 2;
+            int pillBg = on ? 0xFF7A4CFF : 0xFF444050;
+            fill(ms, pX, pY, pX + pillW, pY + pillH, withAlpha(pillBg, alpha));
+            int knobX = on ? pX + pillW - pillH : pX;
+            fill(ms, knobX, pY, knobX + pillH, pY + pillH, withAlpha(0xFFFFFFFF, alpha));
         }
+    }
+
+    private static int withAlpha(int argb, float alpha) {
+        int a = Math.max(0, Math.min(255, (int) ((argb >>> 24 & 0xFF) * alpha)));
+        return (a << 24) | (argb & 0x00FFFFFF);
     }
 }
