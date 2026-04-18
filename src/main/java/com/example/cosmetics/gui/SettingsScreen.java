@@ -77,8 +77,19 @@ public class SettingsScreen extends Screen {
                     () -> fs.speed, v -> fs.speed = v));
         }
         if (feature.has(FeatureType.Caps.COUNT)) {
-            sliders.add(new Slider(sx, sy + (i++) * rowH, sw, 17, "Count", 1F, 30F,
-                    () -> (float) fs.count, v -> fs.count = Math.round(v)));
+            // FAST_PLACE uses COUNT for calls-per-tick, others use it for particle count
+            if (feature == FeatureType.FAST_PLACE) {
+                sliders.add(new Slider(sx, sy + (i++) * rowH, sw, 17, "Calls/tick", 1F, 10F,
+                        () -> (float) fs.count, v -> fs.count = Math.round(v)) {
+                    @Override
+                    public String formatValue() {
+                        return fs.count + "x";
+                    }
+                });
+            } else {
+                sliders.add(new Slider(sx, sy + (i++) * rowH, sw, 17, "Count", 1F, 30F,
+                        () -> (float) fs.count, v -> fs.count = Math.round(v)));
+            }
         }
         if (feature.has(FeatureType.Caps.PLACE_SPEED)) {
             // speed field stores interval in ticks: 1 = every tick (max), 20 = ~1/s (vanilla)

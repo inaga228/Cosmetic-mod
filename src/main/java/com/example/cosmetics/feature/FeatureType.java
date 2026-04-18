@@ -44,7 +44,8 @@ public enum FeatureType {
     FULLBRIGHT   ("Fullbright",     Category.UTILITY, 0),
     AUTO_TOTEM   ("Auto Totem",     Category.UTILITY, Caps.COUNT),
     // PLACE_SPEED cap: speed field used as interval in ticks (1 = every tick = max)
-    FAST_PLACE   ("Fast Place",     Category.UTILITY, Caps.PLACE_SPEED);
+    // COUNT cap: how many times to place per tick (1..5)
+    FAST_PLACE   ("Fast Place",     Category.UTILITY, Caps.PLACE_SPEED | Caps.COUNT);
 
     public enum Category { TRAILS, PARTICLES, HAT, WINGS, EFFECTS, COMBAT, HUD, ANIM, UTILITY }
 

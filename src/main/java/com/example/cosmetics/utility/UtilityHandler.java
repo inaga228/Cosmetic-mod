@@ -10,7 +10,6 @@ import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.potion.Effects;
-import net.minecraft.util.ActionResultType;
 import net.minecraft.util.Hand;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.math.BlockRayTraceResult;
@@ -155,57 +154,63 @@ public final class UtilityHandler {
     // -------------------------------------------------------------------------
     // Fast Place
     //
-    // Vanilla Minecraft enforces a rightClickDelay of 4 ticks between block
-    // placements. We bypass this by zeroing rightClickDelay and manually
-    // calling processRightClick every N ticks (N = speed field, min 1).
+    // Vanilla enforces rightClickDelay = 4 ticks between placements.
+    // We bypass it by:
+    //   1. Zeroing rightClickDelay every tick.
+    //   2. Calling useItemOn `count` times per tick (each call places one block
+    //      and advances the targeted block position via the ray-trace result,
+    //      so consecutive calls place into adjacent positions).
     //
-    // When the interval is 1 (Max) — places every single client tick.
+    // interval=1 + count=10 → up to 200 placements/sec (server will throttle
+    // but client sends the packets as fast as possible).
     // -------------------------------------------------------------------------
     private void tickFastPlace(Minecraft mc, ClientPlayerEntity player, CosmeticsState state) {
         if (!state.isOn(FeatureType.FAST_PLACE)) return;
 
-        // PRM button must be held.
         if (!mc.options.keyUse.isDown()) {
             placeTimer = 0;
             return;
         }
 
-        // Must be looking at a block.
         if (mc.hitResult == null || mc.hitResult.getType() != RayTraceResult.Type.BLOCK) {
             placeTimer = 0;
             return;
         }
 
-        // Must be holding a block item in main or off hand.
         ItemStack mainHand = player.getItemInHand(Hand.MAIN_HAND);
         ItemStack offHand  = player.getItemInHand(Hand.OFF_HAND);
-        boolean hasBlock = (mainHand.getItem() instanceof BlockItem)
-                        || (offHand.getItem() instanceof BlockItem);
-        if (!hasBlock) {
+        boolean mainIsBlock = mainHand.getItem() instanceof BlockItem;
+        boolean offIsBlock  = offHand.getItem()  instanceof BlockItem;
+        if (!mainIsBlock && !offIsBlock) {
             placeTimer = 0;
             return;
         }
 
-        // Clamp interval: 1 (fastest) .. 20.
-        int interval = Math.max(1, Math.round(state.settings(FeatureType.FAST_PLACE).speed));
+        int interval  = Math.max(1, Math.round(state.settings(FeatureType.FAST_PLACE).speed));
+        int callsPerTick = Math.max(1, state.settings(FeatureType.FAST_PLACE).count);
 
         if (placeTimer > 0) {
             placeTimer--;
             return;
         }
 
-        // Zero vanilla cooldown so the game won't reject our click.
-        mc.rightClickDelay = 0;
-
-        // Fire a right-click use on the targeted block.
-        BlockRayTraceResult blockHit = (BlockRayTraceResult) mc.hitResult;
         PlayerController pc = mc.gameMode;
         if (pc == null) return;
 
-        // Try main hand first, then off hand (mirrors vanilla logic).
-        ActionResultType result = pc.useItemOn(player, mc.level, Hand.MAIN_HAND, blockHit);
-        if (result != ActionResultType.SUCCESS && mainHand.getItem() instanceof BlockItem == false) {
-            pc.useItemOn(player, mc.level, Hand.OFF_HAND, blockHit);
+        BlockRayTraceResult blockHit = (BlockRayTraceResult) mc.hitResult;
+
+        for (int c = 0; c < callsPerTick; c++) {
+            // Zero the vanilla cooldown before every call.
+            mc.rightClickDelay = 0;
+
+            Hand useHand = mainIsBlock ? Hand.MAIN_HAND : Hand.OFF_HAND;
+            pc.useItemOn(player, mc.level, useHand, blockHit);
+
+            // Re-run the ray trace so each subsequent call targets the
+            // newly placed block's neighbour, not the same face.
+            mc.hitResult = player.pick(mc.gameMode.getPickRange(), 0F, false);
+            if (mc.hitResult == null || mc.hitResult.getType() != RayTraceResult.Type.BLOCK) break;
+            blockHit = (BlockRayTraceResult) mc.hitResult;
         }
 
         placeTimer = interval - 1;
