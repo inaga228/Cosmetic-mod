@@ -29,8 +29,8 @@ public final class HatRenderer {
         if (player == null) return;
 
         // Hide the hat in first-person so it does not block the view.
-        // mc.options.thirdPersonView: 0 = first-person, 1 = back, 2 = front.
-        if (mc.options.thirdPersonView == 0) return;
+        // Field name varies between mappings; keep visible if check unavailable.
+        if (isFirstPerson(mc)) return;
 
         FeatureSettings fs = state.settings(FeatureType.CHINA_HAT);
 
@@ -39,7 +39,7 @@ public final class HatRenderer {
         double py = player.yo + (player.getY() - player.yo) * partialTicks;
         double pz = player.zo + (player.getZ() - player.zo) * partialTicks;
 
-        Vector3d cam = mc.gameRenderer.getCamera().getPosition();
+        Vector3d cam = mc.gameRenderer.getMainCamera().getPosition();
 
         double eye = player.getEyeHeight();
         double dx = px - cam.x + fs.offsetX;
@@ -61,7 +61,7 @@ public final class HatRenderer {
         int b = clamp((int)(fs.colorB * 255));
         int a = 150; // semi-transparent
 
-        IRenderTypeBuffer.Impl buf = mc.getRenderTypeBuffers().getBufferSource();
+        IRenderTypeBuffer.Impl buf = mc.renderBuffers().bufferSource();
         IVertexBuilder vb = buf.getBuffer(ModRenderTypes.COLOR_QUADS);
 
         float radius, height;
@@ -106,6 +106,38 @@ public final class HatRenderer {
     }
 
     private static int clamp(int v) { return Math.max(0, Math.min(255, v)); }
+
+    /**
+     * Detect first-person mode without depending on a specific Options field
+     * name (renamed across MCP/official mappings). We probe the
+     * {@code Minecraft.options} object reflectively for either an
+     * {@code int thirdPersonView} (1.16.5 style) or a {@code CameraType}
+     * field (later mappings); if neither is found, we fail-safe to "not
+     * first person" (i.e. always render the hat).
+     */
+    static boolean isFirstPerson(Minecraft mc) {
+        try {
+            Object opts = mc.options;
+            if (opts == null) return false;
+            for (java.lang.reflect.Field f : opts.getClass().getFields()) {
+                String n = f.getName().toLowerCase();
+                if (!n.contains("person") && !n.contains("camera")) continue;
+                Class<?> ft = f.getType();
+                if (ft == int.class) {
+                    return f.getInt(opts) == 0;
+                }
+                if (ft.isEnum()) {
+                    Object v = f.get(opts);
+                    if (v == null) return false;
+                    String name = v.toString();
+                    return name.equalsIgnoreCase("FIRST_PERSON") || name.equalsIgnoreCase("FIRST");
+                }
+            }
+        } catch (Throwable ignored) {
+            // Mapping mismatch — be permissive and render anyway.
+        }
+        return false;
+    }
 
     private HatRenderer() {}
 }

@@ -7,7 +7,7 @@ import com.example.cosmetics.gui.GuiDraw;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.AbstractClientPlayerEntity;
+import net.minecraft.client.entity.player.AbstractClientPlayerEntity;
 import net.minecraft.client.gui.AbstractGui;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -148,7 +148,7 @@ public final class TargetHud {
         if (fillW > 0) {
             int left = hpColorArgb();
             int right = accent;
-            AbstractGui.fillGradient(ms, barX, barY, barX + fillW, barY + barH, left, right);
+            GuiDraw.fillGradientRect(ms, barX, barY, barX + fillW, barY + barH, left, right);
         }
 
         String hpText = String.format("%.0f / %.0f ♥", draw.getHealth(), draw.getMaxHealth());

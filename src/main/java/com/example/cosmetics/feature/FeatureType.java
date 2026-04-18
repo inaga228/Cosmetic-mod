@@ -18,8 +18,13 @@ public enum FeatureType {
     // Hat (hidden in first-person to keep view clear)
     CHINA_HAT   ("China Hat",       Category.HAT,     Caps.COLOR | Caps.SIZE | Caps.STYLE | Caps.OFFSET),
 
-    // Wings (flap anim driven by player speed)
-    DRAGON_WINGS ("Dragon Wings",   Category.WINGS,   Caps.COLOR | Caps.SIZE | Caps.SPEED | Caps.STYLE | Caps.OFFSET),
+    // Wings (flap anim driven by player speed). Style picks one of the
+    // visual presets — Dragon / Angel / Spirit / Bat / Phoenix / Crystal.
+    DRAGON_WINGS ("Wings",          Category.WINGS,   Caps.COLOR | Caps.SIZE | Caps.SPEED | Caps.STYLE | Caps.OFFSET),
+
+    // Movement effects: jump ring + landing ring on the ground
+    JUMP_CIRCLES  ("Jump Circles",  Category.EFFECTS, Caps.COLOR | Caps.SIZE | Caps.STYLE | Caps.SPEED),
+    LANDING_RING  ("Landing Ring",  Category.EFFECTS, Caps.COLOR | Caps.SIZE | Caps.STYLE),
 
     // Hit effects (more styles: slash, stars, crit, ripple, shards, bolt)
     HIT_EFFECT  ("Hit Effect",      Category.COMBAT,  Caps.COLOR | Caps.SIZE | Caps.COUNT | Caps.STYLE),
@@ -33,7 +38,7 @@ public enum FeatureType {
     CUSTOM_ATTACK    ("Custom Attack Anim",  Category.ANIM, Caps.SIZE),
     CUSTOM_PLACE     ("Custom Place Anim",   Category.ANIM, Caps.SIZE);
 
-    public enum Category { TRAILS, PARTICLES, HAT, WINGS, COMBAT, HUD, ANIM }
+    public enum Category { TRAILS, PARTICLES, HAT, WINGS, EFFECTS, COMBAT, HUD, ANIM }
 
     /** Bitmask of which settings fields this feature uses. */
     public static final class Caps {

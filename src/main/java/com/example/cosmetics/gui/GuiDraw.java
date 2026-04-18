@@ -30,6 +30,16 @@ public final class GuiDraw extends AbstractGui {
         I.fillGradient(ms, x, y, x + w, y + h, aL, aR);
     }
 
+    /**
+     * Direct horizontal-gradient rect using full ARGB on each end. Public
+     * shim around {@link AbstractGui#fillGradient} which is protected and
+     * therefore not callable from outside the gui package.
+     */
+    public static void fillGradientRect(MatrixStack ms, int x1, int y1, int x2, int y2,
+                                        int leftArgb, int rightArgb) {
+        I.fillGradient(ms, x1, y1, x2, y2, leftArgb, rightArgb);
+    }
+
     private void drawRoundedPanel(MatrixStack ms, int x, int y, int w, int h, float alpha,
                                    int topRgb, int bottomRgb, int accentRgb) {
         // Outer glow rings (use accent color)

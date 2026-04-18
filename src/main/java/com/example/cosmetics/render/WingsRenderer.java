@@ -13,18 +13,26 @@ import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.math.vector.Vector3f;
 
 /**
- * Dragon wings cosmetic — two small translucent wings on the player's back.
- * Flap amplitude is driven by the player's horizontal speed so the wings
- * look like they're propelling the player when running.
+ * Wings cosmetic — two translucent wings on the player's back. Flap amplitude
+ * is driven by the player's horizontal speed so the wings look like they're
+ * propelling the player when running.
  *
  * Hidden in first-person for the local player.
  *
- * Styles:
+ * Styles (cycle with style slider; user-pickable):
  *   0 = DRAGON   — classic membrane wing (3 finger bones)
- *   1 = ANGEL    — feather-row silhouette
- *   2 = SPIRIT   — glow-blended translucent double wing
+ *   1 = ANGEL    — clean feather rows, opaque
+ *   2 = SPIRIT   — glow-blended translucent double sheet
+ *   3 = BAT      — narrow leathery wings with sharp finger tips
+ *   4 = PHOENIX  — large fan with bright orange/red gradient (flame palette)
+ *   5 = CRYSTAL  — geometric shard wings with bright edges, glow-blended
  */
 public final class WingsRenderer {
+
+    public static final int STYLE_COUNT = 6;
+    public static final String[] STYLE_NAMES = {
+            "Dragon", "Angel", "Spirit", "Bat", "Phoenix", "Crystal"
+    };
 
     public static void render(MatrixStack ms, float partialTicks) {
         Minecraft mc = Minecraft.getInstance();
@@ -35,14 +43,14 @@ public final class WingsRenderer {
         if (player == null) return;
 
         // Hidden in first-person.
-        if (mc.options.thirdPersonView == 0) return;
+        if (HatRenderer.isFirstPerson(mc)) return;
 
         FeatureSettings fs = state.settings(FeatureType.DRAGON_WINGS);
 
         double px = player.xo + (player.getX() - player.xo) * partialTicks;
         double py = player.yo + (player.getY() - player.yo) * partialTicks;
         double pz = player.zo + (player.getZ() - player.zo) * partialTicks;
-        Vector3d cam = mc.gameRenderer.getCamera().getPosition();
+        Vector3d cam = mc.gameRenderer.getMainCamera().getPosition();
 
         float yaw = player.yBodyRotO + (player.yBodyRot - player.yBodyRotO) * partialTicks;
 
@@ -63,15 +71,24 @@ public final class WingsRenderer {
         double dy = py - cam.y + 1.30 + fs.offsetY;
         double dz = pz - cam.z + fs.offsetZ;
 
-        int style = Math.floorMod(fs.style, 3);
-        boolean glow = style == 2;
-        IRenderTypeBuffer.Impl buf = mc.getRenderTypeBuffers().getBufferSource();
+        int style = Math.floorMod(fs.style, STYLE_COUNT);
+        // Spirit + Crystal are glow-blended for the dreamy / shiny look.
+        boolean glow = style == 2 || style == 5;
+        IRenderTypeBuffer.Impl buf = mc.renderBuffers().bufferSource();
         IVertexBuilder vb = buf.getBuffer(glow ? ModRenderTypes.GLOW_QUADS : ModRenderTypes.COLOR_QUADS);
 
+        // Phoenix style overrides user color with a fiery palette per-vertex,
+        // but we still derive a base alpha and tint multiplier from settings.
         int r = clamp255((int)(fs.colorR * 255));
         int g = clamp255((int)(fs.colorG * 255));
         int b = clamp255((int)(fs.colorB * 255));
-        int a = style == 2 ? 140 : 170;
+        int a;
+        switch (style) {
+            case 2:  a = 140; break; // Spirit — soft
+            case 4:  a = 200; break; // Phoenix — bright
+            case 5:  a = 175; break; // Crystal — translucent
+            default: a = 170;
+        }
 
         float size = Math.max(0.2F, fs.size);
 
@@ -160,7 +177,7 @@ public final class WingsRenderer {
                         new float[]{x0, yBot, z * 0.4F},
                         side, r, g, b, a);
             }
-        } else { // SPIRIT — two stacked translucent sheets
+        } else if (style == 2) { // SPIRIT — two stacked translucent sheets
             float[][] a1 = {
                     {0, 0, 0}, {1.4F * s, 0.3F * s, -0.2F * s},
                     {1.3F * s, -0.2F * s, -0.4F * s}, {0.6F * s, -0.4F * s, -0.2F * s}
@@ -174,6 +191,78 @@ public final class WingsRenderer {
             int r2 = clamp255(r + 20), g2 = clamp255(g + 20), b2 = clamp255(b + 30);
             tri3d(vb, pose, a2[0], a2[1], a2[2], side, r2, g2, b2, (int)(a * 0.75F));
             tri3d(vb, pose, a2[0], a2[2], a2[3], side, r2, g2, b2, (int)(a * 0.75F));
+        } else if (style == 3) { // BAT — narrow leathery wing with sharp finger tips
+            // 4 finger bones reaching down-and-back, dark thin membrane.
+            float[][] pts = {
+                    {0.00F,         0.00F,        0.00F},          // 0 shoulder
+                    {0.65F * s,    -0.05F * s,   -0.05F * s},      // 1 elbow
+                    {1.30F * s,     0.30F * s,   -0.20F * s},      // 2 wrist top
+                    {1.65F * s,    -0.30F * s,   -0.30F * s},      // 3 finger 1 down
+                    {1.40F * s,    -0.65F * s,   -0.40F * s},      // 4 finger 2 down
+                    {0.95F * s,    -0.85F * s,   -0.40F * s},      // 5 finger 3 down
+                    {0.40F * s,    -0.60F * s,   -0.20F * s},      // 6 trailing
+            };
+            int[][] tris = {
+                    {0, 1, 2}, {0, 2, 3}, {0, 3, 4}, {0, 4, 5}, {0, 5, 6}
+            };
+            // Bat membranes are darker, so dim the user color a bit.
+            int dr = clamp255((int)(r * 0.7F)), dg = clamp255((int)(g * 0.7F)), db = clamp255((int)(b * 0.7F));
+            for (int[] tri : tris) {
+                tri3d(vb, pose, pts[tri[0]], pts[tri[1]], pts[tri[2]], side, dr, dg, db, a);
+            }
+            // Bone edges — bright user color.
+            quadEdge(vb, pose, pts[0], pts[1], side, r, g, b, a, 0.012F);
+            quadEdge(vb, pose, pts[1], pts[2], side, r, g, b, a, 0.012F);
+            quadEdge(vb, pose, pts[2], pts[3], side, r, g, b, a, 0.012F);
+            quadEdge(vb, pose, pts[2], pts[4], side, r, g, b, a, 0.012F);
+            quadEdge(vb, pose, pts[2], pts[5], side, r, g, b, a, 0.012F);
+        } else if (style == 4) { // PHOENIX — fan of fiery feathers (gradient inside→outside)
+            // Hot core color pinned to flame palette but biased by user tint.
+            int hotR = 255;
+            int hotG = clamp255(180 + (g - 180) / 4);
+            int hotB = clamp255(40  + (b -  40) / 4);
+            int outR = clamp255((int)(r * 0.85F + 90));
+            int outG = clamp255((int)(g * 0.40F + 30));
+            int outB = clamp255((int)(b * 0.10F));
+            int rows = 5;
+            for (int i = 0; i < rows; i++) {
+                float fr = i / (float) (rows - 1);
+                float x0 = 0.10F * s + i * 0.30F * s;
+                float x1 = x0 + 0.55F * s + 0.05F * fr * s;
+                float yTop = 0.20F * s - i * 0.06F * s;
+                float yBot = -0.30F * s - i * 0.05F * s;
+                float z   = -0.10F * s - i * 0.10F * s;
+                int rr = clamp255((int)(hotR * (1F - fr) + outR * fr));
+                int gg = clamp255((int)(hotG * (1F - fr) + outG * fr));
+                int bb = clamp255((int)(hotB * (1F - fr) + outB * fr));
+                tri3d(vb, pose,
+                        new float[]{x0, yTop, z * 0.5F},
+                        new float[]{x1, yTop * 0.4F, z},
+                        new float[]{x0, yBot, z * 0.4F},
+                        side, rr, gg, bb, a);
+                tri3d(vb, pose,
+                        new float[]{x1, yTop * 0.4F, z},
+                        new float[]{x1, yBot * 0.5F, z},
+                        new float[]{x0, yBot, z * 0.4F},
+                        side, rr, gg, bb, a);
+            }
+        } else { // CRYSTAL — geometric shard wing with bright edges
+            // 5 angular shards radiating from the shoulder, stacked.
+            float[][][] shards = {
+                    {{0,0,0}, {0.70F * s, 0.40F * s, -0.10F * s}, {0.85F * s, 0.05F * s, -0.20F * s}},
+                    {{0,0,0}, {0.85F * s, 0.05F * s, -0.20F * s}, {1.25F * s, 0.20F * s, -0.30F * s}},
+                    {{0,0,0}, {1.25F * s, 0.20F * s, -0.30F * s}, {1.50F * s,-0.10F * s, -0.45F * s}},
+                    {{0,0,0}, {1.50F * s,-0.10F * s, -0.45F * s}, {1.20F * s,-0.40F * s, -0.50F * s}},
+                    {{0,0,0}, {1.20F * s,-0.40F * s, -0.50F * s}, {0.55F * s,-0.55F * s, -0.30F * s}},
+            };
+            // Brighter inner color, dimmer outer.
+            int br = clamp255(r + 50), bg = clamp255(g + 50), bb = clamp255(b + 50);
+            for (float[][] sh : shards) {
+                tri3d(vb, pose, sh[0], sh[1], sh[2], side, r, g, b, a);
+                // Bright outline along the two outer edges.
+                quadEdge(vb, pose, sh[1], sh[2], side, br, bg, bb, a, 0.010F);
+                quadEdge(vb, pose, sh[0], sh[2], side, br, bg, bb, (int)(a * 0.7F), 0.008F);
+            }
         }
 
         ms.popPose();

@@ -38,14 +38,14 @@ public final class TrailRenderer {
         List<TrailHistory.Point> pts = new ArrayList<>(TrailHistory.points());
         if (pts.size() < 2) return;
 
-        Vector3d cam = mc.gameRenderer.getCamera().getPosition();
+        Vector3d cam = mc.gameRenderer.getMainCamera().getPosition();
 
         boolean rainbow = s.isOn(FeatureType.RAINBOW_TRAIL);
         boolean flame   = s.isOn(FeatureType.FLAME_TRAIL);
         boolean galaxy  = s.isOn(FeatureType.GALAXY_TRAIL);
         if (!rainbow && !flame && !galaxy) return;
 
-        IRenderTypeBuffer.Impl buf = mc.getRenderTypeBuffers().getBufferSource();
+        IRenderTypeBuffer.Impl buf = mc.renderBuffers().bufferSource();
 
         if (rainbow) drawTrail(ms, buf, pts, cam, s.settings(FeatureType.RAINBOW_TRAIL),
                 TrailKind.RAINBOW, partialTicks);

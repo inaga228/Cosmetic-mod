@@ -128,7 +128,9 @@ public class SettingsScreen extends Screen {
         if (feature == FeatureType.HIT_EFFECT)   return com.example.cosmetics.hit.HitEffectHandler.STYLE_NAMES;
         if (feature == FeatureType.COSMETICS_HUD) return com.example.cosmetics.hud.CosmeticsHud.STYLE_NAMES;
         if (feature == FeatureType.TARGET_HUD)   return com.example.cosmetics.hud.TargetHud.STYLE_NAMES;
-        if (feature == FeatureType.DRAGON_WINGS) return new String[]{"Dragon", "Angel", "Spirit"};
+        if (feature == FeatureType.DRAGON_WINGS) return com.example.cosmetics.render.WingsRenderer.STYLE_NAMES;
+        if (feature == FeatureType.JUMP_CIRCLES
+         || feature == FeatureType.LANDING_RING) return com.example.cosmetics.effects.JumpCircles.STYLE_NAMES;
         if (feature == FeatureType.RAINBOW_TRAIL
          || feature == FeatureType.FLAME_TRAIL
          || feature == FeatureType.GALAXY_TRAIL) return new String[]{"Ribbon", "Blade", "Double"};

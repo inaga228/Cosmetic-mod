@@ -47,9 +47,16 @@ public final class CosmeticsState {
             case CHINA_HAT:     s.colorR = 0.85F; s.colorG = 0.20F; s.colorB = 0.25F;
                                 s.offsetY = 0.0F; s.size = 1.0F; break;
 
-            // Dragon wings (small, pretty, lilac by default)
+            // Wings (small, pretty, lilac by default — Dragon style)
             case DRAGON_WINGS:  s.colorR = 0.60F; s.colorG = 0.30F; s.colorB = 1.00F;
                                 s.size = 0.75F; s.speed = 1.0F; s.style = 0; break;
+
+            // Jump rings — bright cyan, moderate size, DOUBLE style by default
+            case JUMP_CIRCLES:  s.colorR = 0.30F; s.colorG = 0.85F; s.colorB = 1.00F;
+                                s.size = 1.0F; s.speed = 1.0F; s.style = 2; break;
+            // Landing rings — warm amber, slightly smaller, THICK by default
+            case LANDING_RING:  s.colorR = 1.00F; s.colorG = 0.70F; s.colorB = 0.20F;
+                                s.size = 0.9F; s.style = 1; break;
 
             // Combat
             case HIT_EFFECT:    s.colorR = 1.00F; s.colorG = 0.20F; s.colorB = 0.20F; s.count = 8; break;
