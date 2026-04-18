@@ -6,22 +6,24 @@ import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import org.lwjgl.opengl.GL11;
 
 /**
- * Custom render types. Subclassing RenderType so we can access the
- * protected {@code State.Builder} / {@code create(...)} APIs in 1.16.5.
+ * Custom render types. Provides static factory methods for creating
+ * specialized render types.
  */
-public class ModRenderTypes extends RenderType {
+public class ModRenderTypes {
 
     /** Untextured translucent colored quads (for the hat). */
-    public static final RenderType COLOR_QUADS = create(
+    public static final RenderType COLOR_QUADS = RenderType.create(
             "cosmeticsmod_color_quads",
             DefaultVertexFormats.POSITION_COLOR,
             GL11.GL_QUADS, 256, false, true,
             RenderType.State.builder()
-                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                    .setTransparencyState(RenderType.TRANSLUCENT_TRANSPARENCY)
                     .setShadeModelState(new RenderState.ShadeModelState(true))
-                    .setCullState(NO_CULL)
-                    .setLightmapState(NO_LIGHTMAP)
-                    .setWriteMaskState(COLOR_WRITE)
+                    .setCullState(RenderType.NO_CULL)
+                    .setLightmapState(RenderType.NO_LIGHTMAP)
+                    .setWriteMaskState(RenderType.COLOR_WRITE)
                     .createCompositeState(false)
     );
+
+    private ModRenderTypes() {}
 }
